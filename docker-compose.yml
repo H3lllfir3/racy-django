@@ -16,8 +16,8 @@ services:
     env_file:
       - "config/mysql.env"
       - "config/django.env"
-    expose:
-      - "8000"
+    ports:
+      - "443:443"
     volumes:
       - "./project:/usr/src/app"
     depends_on:
