@@ -1,0 +1,86 @@
+[{
+        "model": "demo.Item",
+        "pk": 1,
+        "fields": {
+            "name": "atomic_long_delay",
+            "price": 1000.00
+        }
+    },
+    {
+        "model": "demo.Item",
+        "pk": 2,
+        "fields": {
+            "name": "non_atomic_long_delay",
+            "price": 1000.00
+        }
+    },
+    {
+        "model": "demo.Item",
+        "pk": 3,
+        "fields": {
+            "name": "atomic_no_delay",
+            "price": 1000.00
+        }
+    },
+    {
+        "model": "demo.Item",
+        "pk": 4,
+        "fields": {
+            "name": "non_atomic_no_delay",
+            "price": 1000.00
+        }
+    },
+    {
+        "model": "demo.Item",
+        "pk": 5,
+        "fields": {
+            "name": "row_locking_atomic_long_delay",
+            "price": 1000.00
+        }
+    },
+    {
+        "model": "demo.DiscountCode",
+        "pk": 1,
+        "fields": {
+            "code": "atomic_long_delay",
+            "discount_percentage": 10.00,
+            "used": false
+        }
+    },
+    {
+        "model": "demo.DiscountCode",
+        "pk": 2,
+        "fields": {
+            "code": "non_atomic_long_delay",
+            "discount_percentage": 10.00,
+            "used": false
+        }
+    },
+    {
+        "model": "demo.DiscountCode",
+        "pk": 3,
+        "fields": {
+            "code": "atomic_no_delay",
+            "discount_percentage": 10.00,
+            "used": false
+        }
+    },
+    {
+        "model": "demo.DiscountCode",
+        "pk": 4,
+        "fields": {
+            "code": "non_atomic_no_delay",
+            "discount_percentage": 10.00,
+            "used": false
+        }
+    },
+    {
+        "model": "demo.DiscountCode",
+        "pk": 5,
+        "fields": {
+            "code": "row_locking_atomic_long_delay",
+            "discount_percentage": 10.00,
+            "used": false
+        }
+    }
+]
