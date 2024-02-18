@@ -1,16 +1,18 @@
 from django.db import models
 
 
-class Account(models.Model):
-    balance = models.IntegerField(default=0)
+class Item(models.Model):
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    
 
     def __str__(self):
-        return f"Account #{self.id}"
+        return f"Item #{self.name} {self.price}$"
 
-class Transaction(models.Model):
-    account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
-    amount = models.IntegerField(default=0)
-    timestamp = models.DateTimeField(auto_now=True)
+class DiscountCode(models.Model):
+    code = models.CharField(max_length=100, unique=True)
+    discount_percentage = models.DecimalField(max_digits=10, decimal_places=2)
+    used = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"<{self.account_id}, {self.amount}, {self.timestamp.isoformat()}>"
+        return f"<{self.code}, {self.used}, {self.timestamp.isoformat()}>"
