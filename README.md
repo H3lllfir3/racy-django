@@ -5,6 +5,9 @@ and the order of execution (and thus completion) of these operations is
 non-deterministic. The result of this "race" between operations could lead to
 incorrect results - such as one operation overwritting the results of another.
 
+> This project is fork from [racy django](https://github.com/Hypro999/racy-django) 
+> In the main project, the developer attempted to create a situation where a race condition occurs. In this fork, I have attempted to simulate this same situation using the HTTP/2 protocol.
+
 
 ## Django causes race conditions?!
 NO. The actual problem lies at a more fundamental level - concurrent
