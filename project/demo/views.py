@@ -1,3 +1,6 @@
+from django.shortcuts import render
+
+# Create your views here.
 import random
 import time
 
@@ -6,7 +9,7 @@ from django.http import HttpRequest, HttpResponse
 # Only because this is a quick and simple demo
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Account, Transaction
+from .models import Item, DiscountCode
 
 
 def random_delay() -> int:
@@ -15,6 +18,16 @@ def random_delay() -> int:
     # (which should have been put in a queue and delegated to a worker process).
     time.sleep(random.randint(3, 10))
 
+def validate_code(code: str) -> bool:
+    try:
+        discount = DiscountCode.objects.get(code=code)
+        if not discount.used:
+            return True
+            print(f"The f{discount.code} used.")
+    except DiscountCode.DoesNotExist: 
+        pass
+    
+    return False
 
 @csrf_exempt
 def atomic_long_delay(request: HttpRequest) -> HttpResponse:
@@ -27,7 +40,7 @@ def atomic_long_delay(request: HttpRequest) -> HttpResponse:
 
     In this case if we have more than 1 (sync) gunicorn worker running and
     the frequency of requests to this endpoint (or any endpoint modifying the
-    account balance) is greater than the time it takes for the atomic code
+    account price) is greater than the time it takes for the atomic code
     block to run, then we can expect race conditions to occur.
 
     Typically, these kinds of things won't be found in development (unless you
@@ -40,27 +53,32 @@ def atomic_long_delay(request: HttpRequest) -> HttpResponse:
     stale data).
     """
     try:
-        account_id = int(request.POST["account"])
-        amount = int(request.POST["amount"])
-        if amount < 0:
-            raise ValueError
+        item_name = request.POST["item"]
+        code = request.POST["code"]
+        if not item_name or not code:
+            raise ValueError("Invalid item_name or code")
+
     except (KeyError, ValueError):
         return HttpResponse(status=400)
 
-    with transaction.atomic():
-        try:
-            # Possibly reading stale data:
-            account = Account.objects.get(id=account_id)
-        except Account.DoesNotExist:
-            return HttpResponse(status=404)
-        # Enough time for another request to be made or for the data read to
-        # become stale:
-        random_delay()
-        account.balance += amount
-        Transaction.objects.create(account=account, amount=amount)  # Ok.
-        account.save()  # Overwritting possible.
+    if validate_code(code):
+        with transaction.atomic():
+            try:
+                # Possibly reading stale data:
+                item = Item.objects.get(name=item_name)
+                discount = DiscountCode.objects.get(code=code)
+            except Item.DoesNotExist:
+                return HttpResponse(status=404)
+            # Enough time for another request to be made or for the data read to
+            # become stale:
+            random_delay()
+            item.price -= discount.discount_percentage
+            discount.used = True  
+            discount.save()
+            item.save()
 
     return HttpResponse(200)
+    
 
 
 @csrf_exempt
@@ -75,21 +93,25 @@ def non_atomic_long_delay(request: HttpRequest) -> HttpResponse:
     atomic transactions the real issue here - it's the delay b/w read and save.
     """
     try:
-        account_id = int(request.POST["account"])
-        amount = int(request.POST["amount"])
-        if amount < 0:
-            raise ValueError
+        item_name = request.POST["item"]
+        code = request.POST["code"]
+        if not item_name or not code:
+            raise ValueError("Invalid item_name or code")
+
     except (KeyError, ValueError):
         return HttpResponse(status=400)
 
     try:
-        account = Account.objects.get(id=account_id)
-    except Account.DoesNotExist:
+        item = Item.objects.get(name=item_name)
+        discount = DiscountCode.objects.get(code=code)
+    except Item.DoesNotExist:
         return HttpResponse(status=404)
+    
     random_delay()
-    account.balance += amount
-    Transaction.objects.create(account=account, amount=amount)
-    account.save()
+    item.price -= discount.discount_percentage
+    discount.used = True  
+    discount.save()
+    item.save()
 
     return HttpResponse(200)
 
@@ -110,21 +132,26 @@ def atomic_no_delay(request: HttpRequest) -> HttpResponse:
     load.
     """
     try:
-        account_id = int(request.POST["account"])
-        amount = int(request.POST["amount"])
-        if amount < 0:
-            raise ValueError
+        item_name = request.POST["item"]
+        code = request.POST["code"]
+        if not item_name or not code:
+            raise ValueError("Invalid item_name or code")
+
     except (KeyError, ValueError):
         return HttpResponse(status=400)
-
-    with transaction.atomic():
-        try:
-            account = Account.objects.get(id=account_id)
-        except Account.DoesNotExist:
-            return HttpResponse(status=404)
-        account.balance += amount
-        Transaction.objects.create(account=account, amount=amount)
-        account.save()
+    
+    if validate_code(code):
+        with transaction.atomic():
+            try:
+                item = Item.objects.get(name=item_name)
+                discount = DiscountCode.objects.get(code=code)
+            except Item.DoesNotExist:
+                return HttpResponse(status=404)
+            
+            item.price -= discount.discount_percentage
+            discount.used = True  
+            discount.save()
+            item.save()
 
     return HttpResponse(200)
 
@@ -136,20 +163,25 @@ def non_atomic_no_delay(request: HttpRequest) -> HttpResponse:
     and non_atomic_long_delay are effectively the same.
     """
     try:
-        account_id = int(request.POST["account"])
-        amount = int(request.POST["amount"])
-        if amount < 0:
-            raise ValueError
+        item_name = request.POST["item"]
+        code = request.POST["code"]
+        if not item_name or not code:
+            raise ValueError("Invalid item_name or code")
+
     except (KeyError, ValueError):
         return HttpResponse(status=400)
-
-    try:
-        account = Account.objects.get(id=account_id)
-    except Account.DoesNotExist:
-        return HttpResponse(status=404)
-    account.balance += amount
-    Transaction.objects.create(account=account, amount=amount)
-    account.save()
+    
+    if validate_code(code):
+        try:
+            item = Item.objects.get(name=item_name)
+            discount = DiscountCode.objects.get(code=code)
+        except Item.DoesNotExist:
+            return HttpResponse(status=404)
+        
+        item.price -= discount.discount_percentage
+        discount.used = True  
+        discount.save()
+        item.save()
 
     return HttpResponse(200)
 
@@ -171,21 +203,24 @@ def row_locking_atomic_long_delay(request: HttpRequest) -> HttpResponse:
     Race conditions are now impossible.
     """
     try:
-        account_id = int(request.POST["account"])
-        amount = int(request.POST["amount"])
-        if amount < 0:
-            raise ValueError
+        item_name = request.POST["item"]
+        code = request.POST["code"]
+        if not item_name or not code:
+            raise ValueError("Invalid item_name or code")
+
     except (KeyError, ValueError):
         return HttpResponse(status=400)
 
-    with transaction.atomic():
-        try:
-            account = Account.objects.select_for_update().get(id=account_id)
-        except Account.DoesNotExist:
-            return HttpResponse(status=404)
-        random_delay()
-        account.balance += amount
-        Transaction.objects.create(account=account, amount=amount)
-        account.save()
+    if validate_code(code):
+        with transaction.atomic():
+            try:
+                item = Item.objects.select_for_update().get(name=item_name)
+            except Item.DoesNotExist:
+                return HttpResponse(status=404)
+            random_delay()
+            item.price -= discount.discount_percentage
+            discount.used = True  
+            discount.save()
+            item.save()
 
     return HttpResponse(200)
