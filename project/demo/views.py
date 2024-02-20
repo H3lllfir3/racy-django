@@ -12,11 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Item, DiscountCode
 
 
-def random_delay() -> int:
-    # Simulate random factors such as processing and validating the data, and
-    # this one stupid network call that I was making for realtime related stuff
-    # (which should have been put in a queue and delegated to a worker process).
-    time.sleep(random.randint(3, 10))
 
 def validate_code(code: str) -> bool:
     try:
@@ -71,12 +66,13 @@ def atomic_long_delay(request: HttpRequest) -> HttpResponse:
                 return HttpResponse(status=404)
             # Enough time for another request to be made or for the data read to
             # become stale:
-            random_delay()
+            time.sleep(6)
             item.price -= discount.discount_percentage
             discount.used = True  
             discount.save()
             item.save()
-
+    item = Item.objects.get(name=item_name)
+    print(f"Item price: {item.price}")
     return HttpResponse(200)
     
 
@@ -106,13 +102,15 @@ def non_atomic_long_delay(request: HttpRequest) -> HttpResponse:
         discount = DiscountCode.objects.get(code=code)
     except Item.DoesNotExist:
         return HttpResponse(status=404)
+    if validate_code(code):
+        time.sleep(6)
+        item.price -= discount.discount_percentage
+        discount.used = True  
+        discount.save()
+        item.save()
     
-    random_delay()
-    item.price -= discount.discount_percentage
-    discount.used = True  
-    discount.save()
-    item.save()
-
+    item = Item.objects.get(name=item_name)
+    print(f"Item price: {item.price}")
     return HttpResponse(200)
 
 
@@ -153,6 +151,8 @@ def atomic_no_delay(request: HttpRequest) -> HttpResponse:
             discount.save()
             item.save()
 
+    item = Item.objects.get(name=item_name)
+    print(f"Item price: {item.price}")
     return HttpResponse(200)
 
 
@@ -183,6 +183,8 @@ def non_atomic_no_delay(request: HttpRequest) -> HttpResponse:
         discount.save()
         item.save()
 
+    item = Item.objects.get(name=item_name)
+    print(f"Item price: {item.price}")
     return HttpResponse(200)
 
 
@@ -215,12 +217,15 @@ def row_locking_atomic_long_delay(request: HttpRequest) -> HttpResponse:
         with transaction.atomic():
             try:
                 item = Item.objects.select_for_update().get(name=item_name)
+                discount = DiscountCode.objects.get(code=code)
             except Item.DoesNotExist:
                 return HttpResponse(status=404)
-            random_delay()
+            time.sleep(6)
             item.price -= discount.discount_percentage
             discount.used = True  
             discount.save()
             item.save()
 
+    item = Item.objects.get(name=item_name)
+    print(f"Item price: {item.price}")
     return HttpResponse(200)
